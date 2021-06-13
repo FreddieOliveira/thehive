@@ -1,0 +1,43 @@
+version: "3"
+services:
+  elasticsearch:
+    image: elasticsearch:7.9.1
+    environment:
+      - http.host=0.0.0.0
+      - discovery.type=single-node
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "0.0.0.0:9200:9200"
+
+  cortex:
+    image: thehiveproject/cortex:latest
+    depends_on:
+      - elasticsearch
+    command:
+      --job-directory ${JOB_DIRECTORY}
+    environment:
+      - 'JOB_DIRECTORY=${JOB_DIRECTORY}'
+    volumes:
+      - './vol/cortex/application.conf:/etc/cortex/application.conf'
+      - '${JOB_DIRECTORY}:${JOB_DIRECTORY}'
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "0.0.0.0:9001:9001"
+
+  thehive:
+    image: thehiveproject/thehive4:latest
+    depends_on:
+      - elasticsearch
+      - cortex
+    ports:
+      - "0.0.0.0:9000:9000"
+    volumes:
+      - ./vol/thehive/application.conf:/etc/thehive/application.conf
+      - ./vol/thehive/db:/opt/thp/thehive/db
+      - ./vol/thehive/data:/opt/thp/thehive/data
+      - ./vol/thehive/index:/opt/thp/thehive/index
+    command: --cortex-port 9001
+    #command: '--no-config --no-config-secret'
